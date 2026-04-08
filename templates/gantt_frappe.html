@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="data:,">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project GANTT Chart</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Custom Gantt CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/gantt.css') }}?v=20260115c">
+    
+    <style>
+        html, body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;   /* prevent page-level scrollbars */
+            height: 100%;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            position: relative;
+            z-index: 1040;
+        }
+        .navbar-brand { font-weight: 700; color: white !important; }
+        .nav-link     { color: rgba(255,255,255,0.85) !important; }
+        .nav-link:hover, .nav-link.active { color: white !important; }
+
+        .main-container {
+            padding: 12px 16px 24px;      /* 24px breathing room at the bottom */
+            max-width: 100%;
+            height: calc(100vh - 56px);   /* fill viewport below navbar */
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        /* ===== TOOLBAR — single fixed row, no wrapping ===== */
+        .gantt-toolbar {
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            padding: 0 12px;
+            margin-bottom: 10px;
+            height: 46px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+            overflow: hidden;           /* never wrap — clipped if window too narrow */
+            white-space: nowrap;
+        }
+
+        .toolbar-sep {
+            width: 1px;
+            height: 22px;
+            background: #dee2e6;
+            flex-shrink: 0;
+        }
+
+        #project-select {
+            width: 200px;
+            flex-shrink: 0;
+        }
+
+        .view-mode-buttons        { display: flex; gap: 3px; flex-shrink: 0; }
+        .view-mode-buttons .btn   { padding: 3px 10px; font-size: 0.8rem; }
+
+        .nav-buttons              { display: flex; gap: 3px; flex-shrink: 0; }
+        .nav-buttons .btn         { padding: 3px 8px; font-size: 0.8rem; }
+
+        .toolbar-spacer { flex: 1; }    /* pushes action buttons to the right */
+
+        .toolbar-actions          { display: flex; gap: 6px; flex-shrink: 0; }
+
+        /* ===== CHART AREA — fills remaining height ===== */
+        .chart-card {
+            flex: 1;                    /* take all remaining vertical space */
+            min-height: 120px;
+            max-height: calc(100vh - 56px - 46px - 22px);  /* viewport - navbar - toolbar - padding */
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid #e9ecef;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Side-by-side: task list column + gantt timeline */
+        .chart-body {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            overflow: hidden;
+        }
+
+        /* ===== LEFT TASK-LIST PANEL (MS-Project style) ===== */
+        .task-list-panel {
+            width: 240px;
+            min-width: 120px;
+            max-width: 600px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            background: #f8f9fa;
+            z-index: 2;
+        }
+
+        /* Header row: aligns with custom Gantt date-header (HEADER_H: 50px) */
+        .tl-header {
+            height: 50px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #6c757d;
+            background: #f0f0f5;
+            border-bottom: 2px solid #ced4da;
+        }
+
+        /* Scrollable rows area — JS syncs scrollTop with custom Gantt body scroll */
+        .tl-body {
+            flex: 1;
+            overflow-y: scroll;         /* always show scrollbar so width is stable */
+            overflow-x: hidden;
+            scrollbar-width: none;      /* hide scrollbar — it's driven by JS only */
+        }
+        .tl-body::-webkit-scrollbar { display: none; }
+
+        /* Each row: height must equal bar_height(20) + padding(18) = 38px */
+        .tl-row {
+            height: 38px;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            font-size: 12px;
+            color: #212529;
+            border-bottom: 1px solid #e9ecef;
+            cursor: pointer;
+            transition: background 0.1s;
+            box-sizing: border-box;
+        }
+        .tl-row:hover { background: #e2e6ea; }
+
+        .tl-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-right: 8px;
+        }
+
+        .tl-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .tl-members {
+            display: flex;
+            gap: 3px;
+            flex-shrink: 0;
+            margin-left: 4px;
+        }
+
+        .tl-avatar {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            color: #fff;
+            font-size: 9px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            cursor: default;
+        }
+
+        /* ===== RESIZE HANDLES ===== */
+        .resize-handle-h {
+            width: 6px;
+            flex-shrink: 0;
+            cursor: col-resize;
+            background: transparent;
+            position: relative;
+            z-index: 10;
+            transition: background 0.15s;
+        }
+        .resize-handle-h::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            left: 1px;
+            width: 4px;
+            background: #ced4da;
+            border-radius: 2px;
+            transition: background 0.15s, width 0.15s, left 0.15s;
+        }
+        .resize-handle-h:hover::after,
+        .resize-handle-h.dragging::after {
+            background: #667eea;
+            width: 6px;
+            left: 0;
+        }
+
+        .resize-handle-v {
+            height: 6px;
+            flex-shrink: 0;
+            cursor: row-resize;
+            background: transparent;
+            position: relative;
+            z-index: 10;
+            transition: background 0.15s;
+        }
+        .resize-handle-v::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            top: 1px;
+            height: 4px;
+            background: #ced4da;
+            border-radius: 2px;
+            transition: background 0.15s, height 0.15s, top 0.15s;
+        }
+        .resize-handle-v:hover::after,
+        .resize-handle-v.dragging::after {
+            background: #667eea;
+            height: 6px;
+            top: 0;
+        }
+
+        /* ===== GANTT SCROLL AREA ===== */
+        .gantt-scroll-area {
+            flex: 1;
+            min-width: 0;
+            min-height: 0;
+            position: relative;  /* containing block for .gantt-container */
+            overflow: hidden;
+        }
+
+        /* #gantt-chart fills .gantt-scroll-area and hosts our two-SVG structure */
+        #gantt-chart {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Custom scrollbar not needed */
+        .chart-scrollbar-x { display: none; }
+        
+        .gantt {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        /* ===== GANTT POPUP ===== */
+        /* Base style — JS overrides position/z-index after reparenting to <body> */
+        .popup-wrapper {
+            z-index: 200;
+        }
+        
+        /* ===== SCROLLBAR STYLING ===== */
+        #gantt-body-scroll::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+        #gantt-body-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 6px;
+        }
+        #gantt-body-scroll::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 6px;
+        }
+        #gantt-body-scroll::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+        #gantt-body-scroll::-webkit-scrollbar-corner {
+            background: #f1f1f1;
+        }
+        
+        /* Fix button styles */
+        .btn-outline-primary {
+            border-color: #667eea;
+            color: #667eea;
+        }
+        
+        .btn-outline-primary:hover,
+        .btn-outline-primary.active {
+            background-color: #667eea;
+            border-color: #667eea;
+            color: white;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .modal-header .btn-close {
+            filter: brightness(0) invert(1);
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .badge {
+            font-size: 0.85em;
+            padding: 0.5em 0.75em;
+        }
+        
+        /* Frappe Gantt customization */
+        .gantt .bar-wrapper .bar {
+            fill: #667eea;
+        }
+        
+        .gantt .bar-wrapper .bar-progress {
+            fill: #764ba2;
+        }
+        
+        .gantt .bar-wrapper:hover .bar {
+            fill: #5568d3;
+        }
+        
+        .dependency-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            margin-bottom: 5px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        .dependency-item .btn-sm {
+            margin-left: auto;
+        }
+        
+        .team-member-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px;
+            margin-bottom: 5px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        
+        .loading-spinner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+        }
+        
+        .view-mode-buttons .btn {
+            margin-right: 5px;
+        }
+        
+        /* Validation modal styles */
+        .validation-results {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .validation-results .alert {
+            margin-bottom: 1rem;
+        }
+        
+        .validation-results ul {
+            margin-bottom: 0;
+            padding-left: 1.5rem;
+        }
+        
+        /* Weekend and holiday highlighting */
+        .gantt .grid-row {
+            position: relative;
+        }
+        
+        /* Make grid lines more visible */
+        .gantt .grid-line {
+            stroke: #ccc !important;
+            stroke-width: 1.5px !important;
+        }
+        
+        .gantt .grid-header {
+            stroke: #999 !important;
+            stroke-width: 2px !important;
+        }
+        
+        /* Highlight layer should be behind everything but visible */
+        .gantt .highlight-layer {
+            z-index: 0;
+        }
+        
+        /* Weekend columns - dark grey */
+        .gantt .weekend-highlight {
+            fill: #4a4a4a !important;
+            opacity: 0.6 !important;
+            pointer-events: none;
+        }
+        
+        /* Holiday columns - dark green */
+        .gantt .holiday-highlight {
+            fill: #2d5016 !important;
+            opacity: 0.6 !important;
+            pointer-events: none;
+        }
+        
+        /* Note: SVG elements don't use z-index, they layer based on DOM order.
+           The highlight layer is appended last in JS to ensure it overlays tasks. */
+        
+        /* Today marker should be visible and prominent */
+        .gantt .today-line {
+            opacity: 0.8 !important;
+            stroke: #ff4444 !important;
+            stroke-width: 3 !important;
+            stroke-dasharray: 8,4 !important;
+            pointer-events: none !important;
+            z-index: 100 !important;
+        }
+        
+        /* Today marker in SVG (fallback for different implementations) */
+        .today-line {
+            opacity: 0.8 !important;
+            stroke: #ff4444 !important;
+            stroke-width: 3 !important;
+            stroke-dasharray: 8,4 !important;
+            pointer-events: none !important;
+        }
+        
+        /* Fixed milestone tasks have different borders */
+        .gantt .bar.task-completed {
+            fill: #28a745 !important;
+        }
+        
+        .gantt .bar.task-in-progress {
+            fill: #667eea !important;
+        }
+        
+        .gantt .bar.task-todo {
+            fill: #6c757d !important;
+        }
+        
+        .gantt .bar.task-high-priority {
+            stroke-width: 3px !important;
+        }
+        
+        /* Budget health coloring */
+        .gantt .bar-wrapper.task-budget-ok .bar {
+            fill: #28a745 !important;
+        }
+        .gantt .bar-wrapper.task-budget-over .bar {
+            fill: #dc3545 !important;
+        }
+
+        /* Task Group Styling */
+        .gantt .bar-wrapper.task-group-header .bar {
+            opacity: 0.3;
+            stroke-width: 2;
+            rx: 0;
+            ry: 0;
+        }
+        
+        .gantt .bar-wrapper.task-in-group .bar {
+            /* Color will be set dynamically via custom_class based on group color */
+            transition: fill 0.3s ease;
+        }
+        
+        .gantt .bar-wrapper.task-in-group .bar-progress {
+            filter: brightness(0.8);
+        }
+        
+        /* Group header text styling */
+        .gantt .bar-label.group-label {
+            font-weight: 700;
+            font-size: 14px;
+        }
+        
+        /* Group toggle icon */
+        .group-toggle-icon {
+            cursor: pointer;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+        
+        /* Group color indicator */
+        .group-color-badge {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            margin-right: 5px;
+        }
+        
+        /* Group management modal */
+        .group-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 8px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid;
+        }
+        .group-item[draggable="true"] { cursor: grab; }
+        .group-item[draggable="true"]:active { cursor: grabbing; }
+        .group-item-dragging { opacity: 0.4; }
+        .group-item-drag-over { outline: 2px dashed #667eea; background: #eef0fd; }
+
+        .group-grip {
+            font-size: 14px;
+            color: #adb5bd;
+            margin-right: 4px;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .tl-grip {
+            font-size: 13px;
+            color: #adb5bd;
+            margin-right: 3px;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .group-item.subgroup {
+            margin-left: 30px;
+        }
+
+        .group-item-content {
+            flex: 1;
+        }
+
+        .group-item-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .color-picker-wrapper {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+        
+        .color-option.selected {
+            border-color: #000;
+            box-shadow: 0 0 8px rgba(0,0,0,0.3);
+        }
+        
+        /* Custom task styles for dependencies */
+        .gantt .bar-wrapper.task-has-dependencies .bar {
+            stroke: #007bff;
+            stroke-width: 2px;
+            stroke-dasharray: none;
+        }
+        
+        .gantt .bar-wrapper.task-has-dependencies .bar-progress {
+            stroke: #0056b3;
+            stroke-width: 1px;
+        }
+        
+        /* Task with high priority and dependencies */
+        .gantt .bar-wrapper.task-high-priority.task-has-dependencies .bar {
+            stroke: #dc3545;
+            stroke-width: 3px;
+        }
+        
+        /* Dependency violation modal styles */
+        #dependency-violation-modal .modal-header {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+        
+        #dependency-violation-modal .alert-warning {
+            border-left: 4px solid #ffc107;
+            background-color: #fff3cd;
+        }
+        
+        #dependency-violation-modal .fa-link {
+            font-size: 1.1em;
+        }
+        
+        /* Milestone (fixed date) indicators */
+        .gantt .bar-wrapper.task-milestone-start .bar::before {
+            content: '📌';
+            position: absolute;
+            left: -15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            z-index: 10;
+        }
+        
+        .gantt .bar-wrapper.task-milestone-end .bar::after {
+            content: '📌';
+            position: absolute;
+            right: -15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            z-index: 10;
+        }
+        
+        .gantt .bar-wrapper.task-milestone-both .bar::before {
+            content: '🏁';
+            position: absolute;
+            left: -15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            z-index: 10;
+        }
+        
+        .gantt .bar-wrapper.task-milestone-both .bar::after {
+            content: '🏁';
+            position: absolute;
+            right: -15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            z-index: 10;
+        }
+        
+        /* Fixed milestone tasks have different borders */
+        .gantt .bar-wrapper.task-milestone-start .bar,
+        .gantt .bar-wrapper.task-milestone-end .bar,
+        .gantt .bar-wrapper.task-milestone-both .bar {
+            stroke: #ffc107;
+            stroke-width: 3px;
+            stroke-dasharray: 5,5;
+        }
+
+        /* ===== GROUP HEADERS IN LEFT PANEL ===== */
+        .tl-group-header {
+            cursor: pointer !important;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            user-select: none;
+        }
+        .tl-group-header:hover { filter: brightness(0.94); }
+
+        .tl-group-name {
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .tl-group-toggle {
+            font-size: 9px;
+            margin-right: 5px;
+            flex-shrink: 0;
+            opacity: 0.7;
+            display: inline-block;
+            width: 12px;
+            text-align: center;
+        }
+
+        /* ===== DRAG-AND-DROP IN LEFT PANEL ===== */
+        .tl-row[draggable="true"] { cursor: grab; }
+        .tl-row[draggable="true"]:active { cursor: grabbing; }
+
+        .tl-dragging { opacity: 0.4; }
+
+        .tl-drag-over {
+            background: #e8eeff !important;
+            border-top: 2px solid #667eea !important;
+        }
+
+        .tl-drop-target {
+            background: #e8eeff !important;
+            outline: 2px dashed #667eea;
+            outline-offset: -2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-chart-gantt me-2"></i>
+                Project Dashboard
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link text-white" href="/">Dashboard</a>
+                <a class="nav-link text-white" href="/projects">Projects</a>
+                <a class="nav-link text-white" href="/team">Team</a>
+                <a class="nav-link text-white active" href="/gantt">Gantt Chart</a>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Main Container -->
+    <div class="main-container">
+
+        <!-- Toolbar: single flat row, no wrapping -->
+        <div class="gantt-toolbar">
+            <i class="fas fa-chart-gantt" style="color:#667eea; font-size:1.1rem;"></i>
+
+            <div class="toolbar-sep"></div>
+
+            <select class="form-select form-select-sm" id="project-select">
+                <option value="">— select project —</option>
+            </select>
+
+            <div class="toolbar-sep"></div>
+
+            <div class="view-mode-buttons">
+                <button class="btn btn-sm btn-outline-primary" onclick="changeViewMode('Day')">Day</button>
+                <button class="btn btn-sm btn-outline-primary" onclick="changeViewMode('Week')">Week</button>
+                <button class="btn btn-sm btn-outline-primary active" onclick="changeViewMode('Month')">Month</button>
+            </div>
+
+            <div class="toolbar-sep"></div>
+
+            <div class="nav-buttons">
+                <button class="btn btn-sm btn-outline-secondary" onclick="viewAllTasks()" title="Fit all tasks">
+                    <i class="fas fa-expand-arrows-alt"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="goToToday()" title="Go to today">
+                    <i class="fas fa-calendar-day"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary btn-toggle-workdays" onclick="toggleWorkingDaysOnly()" title="Toggle working days only / weekend shading (Mon–Fri)">
+                    5d
+                </button>
+                <button class="btn btn-sm btn-secondary btn-toggle-popup" onclick="togglePopup()" title="Toggle task popup on hover">
+                    <i class="fas fa-comment-alt"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-warning" onclick="redrawPlanning()" title="Check dependency integrity and reschedule violations">
+                    <i class="fas fa-project-diagram me-1"></i>Replan
+                </button>
+            </div>
+
+            <div class="toolbar-spacer"></div>
+
+            <div class="toolbar-actions">
+                <button class="btn btn-sm btn-outline-secondary" onclick="showManageGroupsModal()">
+                    <i class="fas fa-folder-tree me-1"></i>Groups
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="exportProject('json')" title="Export as JSON (full backup)">
+                    <i class="fas fa-file-code me-1"></i>JSON
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="exportProject('csv')" title="Export as CSV (flat table)">
+                    <i class="fas fa-file-csv me-1"></i>CSV
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="exportGanttPDF()" title="Export full Gantt as A3 landscape PDF">
+                    <i class="fas fa-file-pdf me-1"></i>PDF
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="showImportModal()" title="Import project">
+                    <i class="fas fa-upload me-1"></i>Import
+                </button>
+                <button class="btn btn-sm btn-outline-info" onclick="showBudgetModal()" id="budget-btn" title="Budget &amp; Hours overview" style="display:none;">
+                    <i class="fas fa-euro-sign me-1"></i>Budget
+                </button>
+                <button class="btn btn-sm btn-primary" onclick="showAddTaskModal()">
+                    <i class="fas fa-plus me-1"></i>Add Task
+                </button>
+            </div>
+        </div>
+
+        <!-- Chart: task list on left, custom SVG Gantt on right -->
+        <div class="chart-card">
+            <div class="chart-body">
+                <!-- MS-Project style task name column -->
+                <div class="task-list-panel" id="task-list-panel">
+                    <div class="tl-header">Activity</div>
+                    <div class="tl-body" id="task-list-body"></div>
+                </div>
+                <!-- Horizontal resize handle -->
+                <div class="resize-handle-h" id="resize-handle-h" title="Drag to resize panel"></div>
+                <!-- Custom SVG Gantt timeline -->
+                <div class="gantt-scroll-area" id="gantt-scroll-area">
+                    <div id="gantt-chart"></div>
+                </div>
+            </div>
+            <!-- Vertical resize handle -->
+            <div class="resize-handle-v" id="resize-handle-v" title="Drag to resize chart height"></div>
+            <!-- Custom horizontal scrollbar synced with gantt-scroll-area -->
+            <div class="chart-scrollbar-x" id="chart-scrollbar-x"><div id="chart-scrollbar-x-inner"></div></div>
+        </div>
+
+    </div>
+
+    <!-- Task Modal -->
+    <div class="modal fade" id="taskModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="taskModalLabel">Add Activity</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="taskForm">
+                        <input type="hidden" id="task-id">
+                        <input type="hidden" id="task-project-id">
+                        
+                        <div class="mb-3">
+                            <label for="task-title" class="form-label">Title *</label>
+                            <input type="text" class="form-control" id="task-title" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="task-description" class="form-label">Description</label>
+                            <textarea class="form-control" id="task-description" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="task-start-date" class="form-label">Start Date *</label>
+                                <input type="date" class="form-control" id="task-start-date" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="task-end-date" class="form-label">End Date *</label>
+                                <input type="date" class="form-control" id="task-end-date" required>
+                            </div>
+                        </div>
+                        
+                        <!-- Milestone/Fixation Options -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="task-fixed-start" value="1">
+                                    <label class="form-check-label" for="task-fixed-start">
+                                        <i class="fas fa-lock me-1 text-warning"></i>
+                                        Fix Start Date (Milestone)
+                                    </label>
+                                    <div class="form-text">Prevent automatic adjustment of start date when dependencies change</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="task-fixed-end" value="1">
+                                    <label class="form-check-label" for="task-fixed-end">
+                                        <i class="fas fa-lock me-1 text-warning"></i>
+                                        Fix End Date (Milestone)
+                                    </label>
+                                    <div class="form-text">Prevent automatic adjustment of end date when dependencies change</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Total Planned Hours</label>
+                                <div class="form-control-plaintext fw-semibold" id="task-estimated-hours-display">
+                                    <span id="task-estimated-hours-val">0</span> h
+                                    <small class="text-muted fw-normal">(sum of assigned members)</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="task-status" class="form-label">Status</label>
+                                <select class="form-select" id="task-status">
+                                    <option value="To Do">To Do</option>
+                                    <option value="In Progress">In Progress</option>
+                                    <option value="Completed">Completed</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="task-progress" class="form-label d-flex justify-content-between">
+                                <span>% Ready</span>
+                                <span id="task-progress-val" class="fw-semibold text-primary">0%</span>
+                            </label>
+                            <input type="range" class="form-range" id="task-progress" min="0" max="100" step="5" value="0"
+                                oninput="document.getElementById('task-progress-val').textContent = this.value + '%'">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="task-priority" class="form-label">Priority</label>
+                            <select class="form-select" id="task-priority">
+                                <option value="Low">Low</option>
+                                <option value="Medium">Medium</option>
+                                <option value="High">High</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Group Selection -->
+                        <div class="mb-3">
+                            <label for="task-group" class="form-label">Group</label>
+                            <select class="form-select" id="task-group">
+                                <option value="">No Group</option>
+                            </select>
+                            <small class="form-text text-muted">Assign this task to a group for better organization</small>
+                        </div>
+                        
+                        <!-- Team Members Assignment -->
+                        <div class="mb-3">
+                            <label class="form-label">Team Members</label>
+                            <div class="row g-2 mb-2 align-items-center">
+                                <div class="col-md-5">
+                                    <select class="form-select form-select-sm" id="team-member-select">
+                                        <option value="">Select team member...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="number" class="form-control form-control-sm" id="member-planned-hours" placeholder="Planned hrs" step="0.5" min="0">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="number" class="form-control form-control-sm" id="member-spent-hours" placeholder="Spent hrs" step="0.5" min="0">
+                                </div>
+                                <div class="col-md-1">
+                                    <button type="button" class="btn btn-sm btn-outline-primary w-100" id="add-team-member-btn">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="assigned-members-list" class="small"></div>
+                        </div>
+                        
+                        <!-- Dependencies -->
+                        <div class="mb-3">
+                            <label class="form-label">Dependencies</label>
+                            <div class="input-group mb-2">
+                                <select class="form-select" id="dependency-task-select">
+                                    <option value="">Select predecessor task...</option>
+                                </select>
+                                <select class="form-select" id="dependency-type-select">
+                                    <option value="finish_to_start">Finish to Start</option>
+                                    <option value="start_to_start">Start to Start</option>
+                                    <option value="finish_to_finish">Finish to Finish</option>
+                                    <option value="start_to_finish">Start to Finish</option>
+                                </select>
+                                <input type="number" class="form-control" id="dependency-lag" placeholder="Lag (days)" value="0">
+                                <button type="button" class="btn btn-outline-primary" id="add-dependency-btn">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                            <div id="dependencies-list"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="delete-task-btn" style="display:none;">
+                        <i class="fas fa-trash me-1"></i>Delete
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-task-btn">
+                        <i class="fas fa-save me-1"></i>Save
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group Management Modal -->
+    <div class="modal fade" id="groupsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-folder-tree me-2"></i>
+                        Manage Task Groups
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Add / Edit Group Form -->
+                    <div class="card mb-3">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <strong id="group-form-title">Add New Group</strong>
+                            <button type="button" class="btn btn-sm btn-outline-secondary d-none" id="cancel-edit-group-btn">
+                                <i class="fas fa-times me-1"></i>Cancel edit
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <form id="groupForm">
+                                <input type="hidden" id="group-editing-id" value="">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="group-name" class="form-label">Group Name *</label>
+                                        <input type="text" class="form-control" id="group-name" required>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="group-parent" class="form-label">Parent Group</label>
+                                        <select class="form-select" id="group-parent">
+                                            <option value="">None (Root Group)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="group-description" class="form-label">Description</label>
+                                    <textarea class="form-control" id="group-description" rows="2"></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Color *</label>
+                                    <div class="color-picker-wrapper" id="color-picker">
+                                        <div class="color-option" data-color="#667eea" style="background-color: #667eea;"></div>
+                                        <div class="color-option" data-color="#764ba2" style="background-color: #764ba2;"></div>
+                                        <div class="color-option" data-color="#f093fb" style="background-color: #f093fb;"></div>
+                                        <div class="color-option" data-color="#4facfe" style="background-color: #4facfe;"></div>
+                                        <div class="color-option" data-color="#43e97b" style="background-color: #43e97b;"></div>
+                                        <div class="color-option" data-color="#fa709a" style="background-color: #fa709a;"></div>
+                                        <div class="color-option" data-color="#fee140" style="background-color: #fee140;"></div>
+                                        <div class="color-option" data-color="#30cfd0" style="background-color: #30cfd0;"></div>
+                                        <div class="color-option" data-color="#ff6b6b" style="background-color: #ff6b6b;"></div>
+                                        <div class="color-option" data-color="#4ecdc4" style="background-color: #4ecdc4;"></div>
+                                        <div class="color-option" data-color="#a8e6cf" style="background-color: #a8e6cf;"></div>
+                                        <div class="color-option" data-color="#ffd3b6" style="background-color: #ffd3b6;"></div>
+                                    </div>
+                                    <input type="hidden" id="group-color" value="#667eea">
+                                </div>
+                                <button type="button" class="btn btn-primary" id="add-group-btn">
+                                    <i class="fas fa-plus me-1"></i> Add Group
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Existing Groups List -->
+                    <div class="card">
+                        <div class="card-header bg-light">
+                            <strong>Existing Groups</strong>
+                        </div>
+                        <div class="card-body">
+                            <div id="groups-list">
+                                <p class="text-muted">No groups yet. Create one above!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div class="modal fade" id="importModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-upload me-2"></i>Import Project</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Select file</label>
+                        <input type="file" class="form-control" id="import-file-input" accept=".json,.csv">
+                        <div class="form-text">JSON (full backup) or CSV (flat task list) exported from this tool.</div>
+                    </div>
+                    <!-- CSV-only: project name when creating new -->
+                    <div class="mb-3 d-none" id="import-csv-project-name-row">
+                        <label class="form-label fw-semibold">New project name</label>
+                        <input type="text" class="form-control" id="import-csv-project-name" placeholder="Project name">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Import into</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="importTarget" id="import-new-project" value="new" checked>
+                            <label class="form-check-label" for="import-new-project">
+                                Create a new project
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="importTarget" id="import-current-project" value="current">
+                            <label class="form-check-label" for="import-current-project">
+                                Add tasks to current project (<span id="import-current-name">—</span>)
+                            </label>
+                        </div>
+                    </div>
+                    <div id="import-preview" class="alert alert-info d-none">
+                        <strong>Preview:</strong>
+                        <span id="import-preview-text"></span>
+                    </div>
+                    <div id="import-error" class="alert alert-danger d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirm-import-btn" onclick="confirmImport()" disabled>
+                        <i class="fas fa-upload me-1"></i>Import
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Budget Modal -->
+    <div class="modal fade" id="budgetModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-euro-sign me-2"></i>Budget &amp; Hours — <span id="budget-project-name"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="budget-summary-top" class="row g-3 mb-4"></div>
+                    <table class="table table-sm table-hover" id="budget-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Team Member</th>
+                                <th>Role</th>
+                                <th class="text-end">Rate (€/h)</th>
+                                <th class="text-end">Planned hrs</th>
+                                <th class="text-end">Spent hrs</th>
+                                <th class="text-end">Remaining hrs</th>
+                                <th class="text-end">Planned cost (€)</th>
+                                <th class="text-end">Spent cost (€)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="budget-table-body"></tbody>
+                        <tfoot id="budget-table-foot" class="table-light fw-bold"></tfoot>
+                    </table>
+                    <div id="budget-empty" class="text-muted text-center py-4" style="display:none;">
+                        No hour assignments found for this project yet.<br>
+                        Edit tasks and assign team members with planned hours.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div class="loading-spinner d-none">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/gantt.js') }}?v={{ range(100000,999999)|random }}"></script>
+</body>
+</html>

@@ -1,0 +1,469 @@
+/* GANTT Chart Styles */
+
+.gantt-container {
+    width: 100%;
+    height: 600px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #fff;
+    overflow: hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Header Styles */
+.gantt-header {
+    display: flex;
+    height: 40px;
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #e9ecef;
+}
+
+.gantt-header-left {
+    width: 250px;
+    border-right: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+}
+
+.gantt-task-header {
+    padding: 10px 15px;
+    font-weight: 600;
+    color: #495057;
+}
+
+.gantt-header-right {
+    flex: 1;
+    overflow-x: auto;
+}
+
+.gantt-timeline-header {
+    display: flex;
+    height: 40px;
+}
+
+.gantt-day-header {
+    border-right: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: #6c757d;
+    min-width: 40px;
+}
+
+.gantt-day-header.weekend {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.gantt-day-header.holiday {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+/* Chart Body */
+.gantt-chart {
+    display: flex;
+    height: calc(100% - 40px);
+}
+
+.gantt-task-list {
+    width: 250px;
+    border-right: 1px solid #dee2e6;
+    background-color: #f8f9fa;
+    overflow-y: auto;
+}
+
+.gantt-task-row {
+    height: 40px;
+    border-bottom: 1px solid #e9ecef;
+    padding: 8px 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.gantt-task-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: #495057;
+    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gantt-task-details {
+    display: flex;
+    gap: 10px;
+    font-size: 11px;
+}
+
+.task-status {
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-in-progress, .status-in_progress {
+    background-color: #cff4fc;
+    color: #055160;
+}
+
+.status-completed {
+    background-color: #d1e7dd;
+    color: #0f5132;
+}
+
+.status-on-hold, .status-on_hold {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.task-progress {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+/* Timeline */
+.gantt-timeline {
+    flex: 1;
+    position: relative;
+    overflow: auto;
+    background-color: #fff;
+}
+
+.gantt-timeline-row {
+    height: 40px;
+    border-bottom: 1px solid #e9ecef;
+    position: relative;
+}
+
+/* Task Bars */
+.gantt-task-bar {
+    position: absolute;
+    top: 8px;
+    height: 24px;
+    background: linear-gradient(to bottom, #007bff, #0056b3);
+    border-radius: 4px;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    min-width: 40px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.2s ease;
+    overflow: hidden;
+}
+
+.gantt-task-bar:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.gantt-task-bar.dragging {
+    cursor: grabbing;
+    opacity: 0.8;
+    z-index: 1000;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
+}
+
+.gantt-task-bar.resizing {
+    cursor: ew-resize;
+    z-index: 1000;
+}
+
+.gantt-progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: linear-gradient(to bottom, #28a745, #1e7e34);
+    border-radius: 4px 0 0 4px;
+    transition: width 0.3s ease;
+}
+
+.gantt-task-label {
+    position: relative;
+    z-index: 2;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 0 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+/* Resize Handles */
+.gantt-resize-handle {
+    position: absolute;
+    top: 0;
+    width: 8px;
+    height: 100%;
+    cursor: ew-resize;
+    z-index: 3;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.gantt-task-bar:hover .gantt-resize-handle {
+    opacity: 1;
+}
+
+.gantt-resize-left {
+    left: -4px;
+    background: linear-gradient(to right, rgba(255, 255, 255, 0.3), transparent);
+}
+
+.gantt-resize-right {
+    right: -4px;
+    background: linear-gradient(to left, rgba(255, 255, 255, 0.3), transparent);
+}
+
+/* Non-working Day Overlays */
+.gantt-non-working-day {
+    position: absolute;
+    top: 0;
+    background-color: rgba(248, 249, 250, 0.7);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.gantt-non-working-day.weekend {
+    background: repeating-linear-gradient(
+        45deg,
+        rgba(255, 243, 205, 0.3),
+        rgba(255, 243, 205, 0.3) 10px,
+        transparent 10px,
+        transparent 20px
+    );
+}
+
+.gantt-non-working-day.holiday {
+    background: repeating-linear-gradient(
+        45deg,
+        rgba(248, 215, 218, 0.5),
+        rgba(248, 215, 218, 0.5) 10px,
+        transparent 10px,
+        transparent 20px
+    );
+}
+
+/* Dependency Lines */
+.gantt-dependency-line {
+    height: 2px;
+    background-color: #dc3545;
+    z-index: 5;
+    pointer-events: none;
+}
+
+.gantt-dependency-line::after {
+    content: '';
+    position: absolute;
+    right: -6px;
+    top: -3px;
+    width: 0;
+    height: 0;
+    border-left: 6px solid #dc3545;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+}
+
+/* Weekend and Holiday Highlight Overlays */
+.weekend-highlight,
+.holiday-highlight {
+    pointer-events: none !important;
+    user-select: none !important;
+}
+
+/* Ensure task bars and labels appear above highlights */
+.bar-wrapper,
+.bar-label {
+    position: relative;
+    z-index: 10 !important;
+}
+
+/* Frappe Gantt Popup Fixes */
+.popup-wrapper {
+    z-index: 9999 !important;
+    cursor: move;
+    position: absolute !important;
+}
+
+.popup-wrapper .pointer {
+    z-index: 10000 !important;
+}
+
+.popup-wrapper .title {
+    cursor: move;
+    user-select: none;
+}
+
+/* Conflict Dialog */
+.gantt-conflict-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.gantt-conflict-content {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.gantt-conflict-content h3 {
+    color: #dc3545;
+    margin: 0 0 15px 0;
+    font-size: 18px;
+}
+
+.conflict-list {
+    margin: 15px 0;
+}
+
+.conflict-list p {
+    margin: 8px 0;
+    color: #495057;
+    font-size: 14px;
+}
+
+.conflict-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.btn-override, .btn-cancel {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+}
+
+.btn-override {
+    background-color: #dc3545;
+    color: #fff;
+}
+
+.btn-override:hover {
+    background-color: #c82333;
+}
+
+.btn-cancel {
+    background-color: #6c757d;
+    color: #fff;
+}
+
+.btn-cancel:hover {
+    background-color: #5a6268;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .gantt-container {
+        height: 400px;
+    }
+    
+    .gantt-header-left,
+    .gantt-task-list {
+        width: 200px;
+    }
+    
+    .gantt-task-name {
+        font-size: 12px;
+    }
+    
+    .gantt-task-details {
+        font-size: 10px;
+    }
+    
+    .gantt-task-label {
+        font-size: 11px;
+        padding: 0 6px;
+    }
+}
+
+/* Dark Theme Support */
+.dark-theme .gantt-container {
+    background-color: #2d3748;
+    border-color: #4a5568;
+}
+
+.dark-theme .gantt-header {
+    background-color: #1a202c;
+    border-color: #4a5568;
+}
+
+.dark-theme .gantt-header-left,
+.dark-theme .gantt-task-list {
+    background-color: #1a202c;
+    border-color: #4a5568;
+}
+
+.dark-theme .gantt-task-header {
+    color: #e2e8f0;
+}
+
+.dark-theme .gantt-task-name {
+    color: #e2e8f0;
+}
+
+.dark-theme .gantt-task-row {
+    border-color: #4a5568;
+}
+
+.dark-theme .gantt-timeline-row {
+    border-color: #4a5568;
+}
+
+.dark-theme .gantt-day-header {
+    color: #a0aec0;
+    border-color: #4a5568;
+}
+
+/* Print Styles */
+@media print {
+    .gantt-container {
+        height: auto !important;
+        border: 1px solid #000;
+    }
+    
+    .gantt-task-bar {
+        background: #000 !important;
+    }
+    
+    .gantt-progress-bar {
+        background: #666 !important;
+    }
+    
+    .gantt-non-working-day {
+        background: #f0f0f0 !important;
+    }
+}
+
+/* Hide bar labels — names are shown in the left task-list panel */
+.bar-label {
+    display: none !important;
+}

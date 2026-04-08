@@ -1,0 +1,29 @@
+# Python runtime & virtualenv
+python/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Database (contains project data — not tracked in source control)
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup folder
+Backup/
+
+# Flask instance / secrets
+instance/
+.env
+.flaskenv
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
