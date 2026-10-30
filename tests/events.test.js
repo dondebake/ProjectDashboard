@@ -93,3 +93,31 @@ test('dependencies between meetings respect their times on the same date',()=>{
   assert.equal(dependencyConflicts(schedule(p))[0].timeConflict,true);
   p.meetings[1].time='15:00';assert.equal(dependencyConflicts(schedule(p)).length,0);
 });
+
+test('meetings may have an end time after the start time',()=>{
+  const p=fixture();p.meetings[0].endTime='11:30';assert.doesNotThrow(()=>schedule(p));assert.equal(expandMeetings(p)[0].endTime,'11:30');
+  for(const [change,pattern] of [[{endTime:'09:00'},/na de begintijd/],[{endTime:'10:00'},/na de begintijd/],[{endTime:'25:00'},/eindtijd/],[{time:'',endTime:'11:00'},/begintijd/]]){
+    const q=fixture();Object.assign(q.meetings[0],change);assert.throws(()=>schedule(q),pattern);
+  }
+});
+test('one date in a series can be changed or skipped without touching the rest',()=>{
+  const p=fixture();p.meetings[0].recurrence={frequency:'weekly',interval:1,weekday:1,until:'2026-11-23'};
+  p.meetings[0].overrides={'2026-11-09':{date:'2026-11-10',time:'14:00',endTime:'15:00',location:'Delft'}};p.meetings[0].exceptions=['2026-11-16'];
+  const all=expandMeetings(schedule(p));
+  assert.deepEqual(all.map(m=>m.date),['2026-11-02','2026-11-10','2026-11-23']);
+  const moved=all[1];assert.equal(moved.time,'14:00');assert.equal(moved.location,'Delft');assert.equal(moved.overridden,true);assert.equal(moved.originalDate,'2026-11-09');
+  assert.equal(moved.occurrenceId,'@meeting:m:2026-11-09','the moved date keeps its dependencies');
+  assert.equal(all[0].time,'10:00');assert.equal(all[0].overridden,false);assert.equal(all[0].overrides,undefined);
+  assert.deepEqual(parseProject(JSON.stringify(p)).meetings[0].overrides,p.meetings[0].overrides);
+});
+test('invalid date changes in a series are rejected',()=>{
+  for(const override of [{date:'2026-13-01'},{endTime:'09:00'},{colour:'red'}]){
+    const p=fixture();p.meetings[0].recurrence={frequency:'weekly',interval:1,weekday:1,until:'2026-11-23'};p.meetings[0].overrides={'2026-11-09':override};
+    assert.throws(()=>schedule(p),/reeks|eindtijd/);
+  }
+});
+test('a preceding meeting must end before the next one starts on the same day',()=>{
+  const p=fixture();p.meetings.push({...meeting('n'),time:'11:00'});p.meetings[0].endTime='11:30';p.dependencies=[{from:'@meeting:m',to:'@meeting:n',type:'FS',lag:0}];
+  assert.equal(dependencyConflicts(schedule(p)).length,1);
+  p.meetings[0].endTime='10:45';assert.equal(dependencyConflicts(schedule(p)).length,0);
+});

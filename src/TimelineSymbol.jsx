@@ -1,6 +1,6 @@
 import React,{useEffect,useId,useState} from 'react';
 import {createPortal} from 'react-dom';
-import {MEETING_TYPES,recurrenceLabel,DEADLINE_COLOR,MOVING_COLOR} from './events.js';
+import {MEETING_TYPES,recurrenceLabel,DEADLINE_COLOR,MOVING_COLOR,timeRange} from './events.js';
 export const fullDate=s=>new Date(`${s}T12:00:00Z`).toLocaleDateString('nl-NL',{weekday:'short',day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
 export function SymbolIcon({kind='other',mode}) {
   if(mode)return <svg viewBox="0 0 24 24" aria-hidden="true">{mode==='deadline'?<><path d="M6 21V3m0 1h14l-4 5 4 5H6" fill="none" stroke="currentColor" strokeWidth="2"/></>:<path d="M12 2 22 12 12 22 2 12Z" fill="currentColor"/>}</svg>;
@@ -10,7 +10,7 @@ export function SymbolIcon({kind='other',mode}) {
 }
 export function symbolDescription(item) {
   if(item.mode)return `${item.mode==='deadline'?'Vaste deadline':'Meeschuivende mijlpaal'}: ${item.title} — ${fullDate(item.date)}${item.late?' — taak eindigt te laat':''}`;
-  return `${MEETING_TYPES[item.kind]?.label}: ${item.title} — ${fullDate(item.date)}${item.time?` om ${item.time}`:''}`;
+  return `${MEETING_TYPES[item.kind]?.label}: ${item.title} — ${fullDate(item.date)}${item.time?` · ${timeRange(item)}`:''}${item.overridden?' · aangepast':''}`;
 }
 export default function TimelineSymbol({x,y,items,onClick,small=false,blocked=false}) {
   const [position,setPosition]=useState(null),id=useId(),item=items[0];
@@ -22,7 +22,7 @@ export default function TimelineSymbol({x,y,items,onClick,small=false,blocked=fa
       <SymbolIcon kind={item.kind} mode={item.mode}/>{items.length>1&&<span className="symbol-count">{items.length}</span>}{(blocked||item.late)&&<span className="symbol-warning">!</span>}
     </button>
     {position&&createPortal(<div id={id} role="tooltip" className="timeline-tooltip" style={{left:position.left,maxHeight:Math.max(90,window.innerHeight-(position.above?position.bottom:position.top)-10),overflow:'hidden',...(position.above?{bottom:position.bottom}:{top:position.top})}}>
-      {items.slice(0,8).map((value,index)=><div className="tooltip-item" key={index}><strong>{value.title}</strong><span>{fullDate(value.date)}{value.time?` · ${value.time}`:''}</span>{value.mode?<><span>{value.mode==='deadline'?'Vaste deadline — schuift niet mee':'Mijlpaal — volgt het taakeinde'}</span><span>Taak: {value.taskTitle}</span>{value.mode==='deadline'&&<span>Gepland einde: {fullDate(value.planned)}</span>}{value.late&&<b className="loss">Deadline overschreden</b>}</>:<><span>{MEETING_TYPES[value.kind].label} · {recurrenceLabel(value)}</span>{value.location&&<span>{value.location}</span>}{value.description&&<span>{value.description}</span>}</>}</div>)}
+      {items.slice(0,8).map((value,index)=><div className="tooltip-item" key={index}><strong>{value.title}</strong><span>{fullDate(value.date)}{value.time?` · ${timeRange(value)}`:''}{value.overridden?' · aangepast t.o.v. reeks':''}</span>{value.mode?<><span>{value.mode==='deadline'?'Vaste deadline — schuift niet mee':'Mijlpaal — volgt het taakeinde'}</span><span>Taak: {value.taskTitle}</span>{value.mode==='deadline'&&<span>Gepland einde: {fullDate(value.planned)}</span>}{value.late&&<b className="loss">Deadline overschreden</b>}</>:<><span>{MEETING_TYPES[value.kind].label} · {recurrenceLabel(value)}</span>{value.location&&<span>{value.location}</span>}{value.description&&<span>{value.description}</span>}</>}</div>)}
       {items.length>8&&<span>En {items.length-8} andere momenten. Klik voor de volledige lijst.</span>}{blocked&&<strong className="loss">Een vereiste voorganger is niet op tijd gepland.</strong>}<small>Klik om details te bekijken.</small>
     </div>,document.body)}
   </>;

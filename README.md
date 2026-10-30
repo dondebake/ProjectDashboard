@@ -28,7 +28,7 @@ Zet beide HTML-bestanden en het JSON-projectbestand op de netwerkschijf. Collega
 
 ## Planning
 
-- **Structuur:** groep > taak > subtaak. Gebruik **+** in een groepsrij voor een taak en **+** in een taakrij voor een subtaak. Groepen en taken met subtaken zijn in te klappen. Sleep de **⠿**-greep (of gebruik pijltjestoetsen) om groepen te herordenen.
+- **Structuur:** groep > taak > subtaak, met oplopende inspringing en lettergrootte 12/11/10 pt. Gebruik **+** in een groepsrij voor een taak en **+** in een taakrij voor een subtaak. Groepen en taken met subtaken zijn in te klappen. Sleep de **⠿**-greep (of gebruik pijltjestoetsen) om groepen te herordenen.
 - **Taken:** sleep een balk om hem te verplaatsen en de rechterrand om de duur te wijzigen. Dubbelklik of klik op de naam om te bewerken. In de taakmodal vul je een **startdatum** in en daarna óf een **duur in werkdagen** óf een **einddatum**; de andere waarde rekent mee. Duur 0 maakt een mijlpaal.
 - **Dependencies:** klik **⌁** bij de voorganger en daarna bij de opvolger voor een FS-dependency. De taakeditor beheert alle typen (FS/SS/FF/SF) en vertraging in werkdagen. Pijlen lopen om taakbalken heen; als er geen vrije route is, wordt de lijn gestippeld.
 - **Kleuren:** een taak zonder eigen kleur neemt de groepskleur over, een subtaak die van zijn taak.
@@ -38,8 +38,9 @@ Zet beide HTML-bestanden en het JSON-projectbestand op de netwerkschijf. Collega
 
 ## Bijeenkomsten en mijlpalen
 
-- De groep **Bijeenkomsten** heeft een rij per type: Projectteam, Stakeholders, Stuurgroep, Werksessie en Overig, elk met een eigen icoon. Een bijeenkomst is een moment op één dag, met optioneel tijd, locatie en notities.
+- De groep **Bijeenkomsten** heeft een rij per type: Projectteam, Stakeholders, Stuurgroep, Werksessie en Overig, elk met een eigen icoon. Een bijeenkomst is een moment op één dag, met optioneel begin- en eindtijd, locatie en notities.
 - Voeg een los moment of een reeks toe (wekelijks of maandelijks, bijvoorbeeld iedere **derde donderdag**, met interval en einddatum). Iedere datum uit een reeks kan eigen dependencies hebben. Bijeenkomsten blijven op hun vaste datum; een te late voorganger geeft een waarschuwing.
+- **Eén datum uit een reeks aanpassen:** open de reeks, kies onder **Datum uit de reeks** de datum en wijzig datum, tijden, locatie of notities met **Alleen deze datum bewaren**. De rest van de reeks blijft gelijk, en dependencies blijven aan die datum gekoppeld. Met **Deze datum overslaan** valt één keer uit; **Terug naar de reeks** maakt een aanpassing ongedaan.
 - Een taak kan een **mijlpaal** (paars, volgt het taakeinde) of **deadline** (rood, vaste datum) aan het einde krijgen. Die verschijnen naast de balk en op de rij **Mijlpalen** onderaan.
 
 ## Projectteam en uren
@@ -77,7 +78,7 @@ Een projectbestand is JSON met `schemaVersion: 1`, `name`, `calendar`, `groups`,
 - `teamMembers`: `[{id, name, role, rates: [{id, start, end, hourlyRate}]}]`.
 - `timeEntries`: `[{week, taskId, memberId, hours}]`, met als `week` de datum van de maandag.
 - `fixedCosts`: `[{id, description, category, taskId, date, status, amountExVat, vatRate}]`.
-- `meetings` en `tasks[].endMilestone` voor bijeenkomsten en mijlpalen.
+- `meetings` (met `time`, `endTime`, `recurrence`, `exceptions` en per oorspronkelijke datum `overrides`) en `tasks[].endMilestone` voor bijeenkomsten en mijlpalen.
 
 Bestanden zonder deze velden blijven werken. JSON-exports van de oudere Flask-versie van deze app worden bij openen omgezet.
 

@@ -4,6 +4,16 @@ export const MEETING_TYPES={team:{label:'Projectteam',color:'#007bc7'},stakehold
 export const MOVING_COLOR='#7c3aed';
 export const DEADLINE_COLOR='#ce303d';
 export const weekdayNames=['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+const TIME=/^([01]\d|2[0-3]):[0-5]\d$/;
+// Velden die per datum uit een reeks afwijkend kunnen zijn.
+export const OCCURRENCE_FIELDS=['date','time','endTime','location','description'];
+export function timeRange(m) { return m.time?(m.endTime?`${m.time}–${m.endTime}`:m.time):''; }
+function validateTimes(m,label='') {
+  if(m.time&&!TIME.test(m.time))throw Error(`Gebruik een geldige begintijd (UU:MM)${label}.`);
+  if(m.endTime&&!TIME.test(m.endTime))throw Error(`Gebruik een geldige eindtijd (UU:MM)${label}.`);
+  if(m.endTime&&!m.time)throw Error(`Vul ook een begintijd in bij de eindtijd${label}.`);
+  if(m.endTime&&m.endTime<=m.time)throw Error(`De eindtijd moet na de begintijd liggen${label}.`);
+}
 
 export function validateTimeline(project) {
   if(project.meetings!==undefined&&!Array.isArray(project.meetings))throw Error('Bijeenkomsten moeten een lijst zijn.');
@@ -11,12 +21,18 @@ export function validateTimeline(project) {
   for(const m of project.meetings||[]) {
     if(typeof m.id!=='string'||!m.id||ids.has(m.id)||typeof m.title!=='string'||!m.title.trim()||!MEETING_TYPES[m.kind]||!validDate(m.date))throw Error('Ongeldige bijeenkomst. Controleer naam, soort en datum.');
     ids.add(m.id);
-    if(m.time&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(m.time))throw Error('Gebruik een geldige tijd (UU:MM).');
+    validateTimes(m);
     const r=m.recurrence;
     if(!r)continue;
     if(!['weekly','monthly'].includes(r.frequency)||!Number.isInteger(r.interval)||r.interval<1||r.interval>120||!validDate(r.until)||r.until<m.date||daysBetween(m.date,r.until)>3660||!Number.isInteger(r.weekday)||r.weekday<0||r.weekday>6)throw Error('Ongeldige herhaling. Kies een weekdag, interval en einddatum (maximaal 10 jaar).');
     if(r.frequency==='monthly'&&![1,2,3,4,5,-1].includes(r.ordinal))throw Error('Kies de eerste, tweede, derde, vierde, vijfde of laatste weekdag.');
     if(m.exceptions!==undefined&&(!Array.isArray(m.exceptions)||m.exceptions.some(s=>!validDate(s))))throw Error('Ongeldige uitgezonderde bijeenkomstdatum.');
+    if(m.overrides!==undefined&&(typeof m.overrides!=='object'||m.overrides===null||Array.isArray(m.overrides)))throw Error('Ongeldige aanpassingen in de reeks.');
+    for(const [date,o] of Object.entries(m.overrides||{})) {
+      const label=` (${m.title}, ${date})`;
+      if(!validDate(date)||typeof o!=='object'||o===null||Object.keys(o).some(key=>!OCCURRENCE_FIELDS.includes(key))||o.date!==undefined&&!validDate(o.date))throw Error(`Ongeldige aangepaste datum in de reeks${label}.`);
+      validateTimes({...m,...o},label);
+    }
   }
   for(const task of project.tasks||[]) {
     const m=task.endMilestone;if(!m)continue;
@@ -33,9 +49,8 @@ export function nthWeekday(year,month,weekday,ordinal) {
   return `${year}-${String(month+1).padStart(2,'0')}-${String(number).padStart(2,'0')}`;
 }
 
-export function expandMeetings(project) {
-  const result=[];
-  for(const m of project.meetings||[]) {
+// De datums die de reeksregel oplevert, vóór uitzonderingen en aanpassingen per datum.
+export function seriesDates(m) {
     const dates=[],r=m.recurrence;
     if(!r)dates.push(m.date);
     else if(r.frequency==='weekly') {
@@ -48,7 +63,17 @@ export function expandMeetings(project) {
         if(date&&date>=m.date&&date<=r.until)dates.push(date);
       }
     }
-    for(const date of dates)if(!(m.exceptions||[]).includes(date))result.push({...m,date,seriesId:m.id,occurrenceId:m.recurrence?`@meeting:${m.id}:${date}`:`@meeting:${m.id}`});
+    return dates;
+}
+// Een aangepaste datum houdt het ID van zijn oorspronkelijke datum, zodat dependencies gekoppeld blijven.
+export function expandMeetings(project) {
+  const result=[];
+  for(const m of project.meetings||[]) {
+    for(const date of seriesDates(m)) {
+      if((m.exceptions||[]).includes(date))continue;
+      const override=m.recurrence?m.overrides?.[date]:null,{overrides,exceptions,...series}=m;
+      result.push({...series,...override,date:override?.date||date,originalDate:date,overridden:Boolean(override),seriesId:m.id,occurrenceId:m.recurrence?`@meeting:${m.id}:${date}`:`@meeting:${m.id}`});
+    }
   }
   return result.sort((a,b)=>a.date.localeCompare(b.date)||(a.time||'').localeCompare(b.time||'')||a.title.localeCompare(b.title));
 }
@@ -75,7 +100,7 @@ export function dependencyConflicts(project) {
     const pred=nodes.get(d.from),target=nodes.get(d.to);
     if(!pred||!target||target.nodeType!=='meeting')return [];
     const required=dependencyRequirement(pred,target,d,project.calendar);
-    const timeConflict=required===target.start&&pred.nodeType==='meeting'&&pred.time&&target.time&&pred.time>target.time;
+    const timeConflict=required===target.start&&pred.nodeType==='meeting'&&pred.time&&target.time&&(pred.endTime||pred.time)>target.time;
     return required>target.start||timeConflict?[{dependency:d,meeting:target,predecessor:pred,required,timeConflict:Boolean(timeConflict)}]:[];
   });
 }

@@ -1,9 +1,9 @@
 import React,{useState} from 'react';
 import {TYPES} from './engine.js';
-import {planningNodes} from './events.js';
+import {planningNodes,timeRange} from './events.js';
 export default function DependencyEditor({project,nodeId,onChange,onConnect,readOnly=false}) {
   const [from,setFrom]=useState(''),[type,setType]=useState('FS'),[lag,setLag]=useState(0);
-  const nodes=planningNodes(project),label=id=>{const n=nodes.find(x=>x.id===id);return n?(n.nodeType==='meeting'?`${n.title} (${n.date}${n.time?' '+n.time:''})`:n.title):'Onbekend';};
+  const nodes=planningNodes(project),label=id=>{const n=nodes.find(x=>x.id===id);return n?(n.nodeType==='meeting'?`${n.title} (${n.date}${n.time?' '+timeRange(n):''})`:n.title):'Onbekend';};
   const dependencies=project.dependencies.filter(d=>d.to===nodeId||d.from===nodeId);
   return <fieldset disabled={readOnly} className="dependency-editor"><h3>Afhankelijkheden</h3><p>Verbind taken en afzonderlijke bijeenkomsten. Wijzigingen worden direct toegepast.</p>
     {dependencies.map(d=><div className="dependency-row" key={JSON.stringify([d.from,d.to])}><span>{label(d.from)} → {label(d.to)}</span><select aria-label="Dependencytype" value={d.type} onChange={e=>onChange(project.dependencies.map(x=>x===d?{...x,type:e.target.value}:x))}>{Object.entries(TYPES).map(([key,title])=><option key={key} value={key}>{key} · {title}</option>)}</select><input aria-label="Vertraging in werkdagen" type="number" value={d.lag} onChange={e=>onChange(project.dependencies.map(x=>x===d?{...x,lag:Number(e.target.value)}:x))}/><button onClick={()=>onChange(project.dependencies.filter(x=>x!==d))} aria-label="Dependency verwijderen">×</button></div>)}

@@ -72,7 +72,9 @@ progress::-webkit-progress-bar{background:#e1e8ee}progress::-webkit-progress-val
 .colored-row{border-left:4px solid var(--row-color);background:var(--row-tint);gap:4px;position:relative}
 .group-row.colored-row{background:var(--row-tint);font-weight:600}
 .row-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;text-align:left}
-.group-row .row-name{font-weight:600}
+.group-row .row-name{font-weight:600;font-size:12pt}
+.task-row .task-name{font-size:11pt}
+.subtask-row .task-name{font-size:10pt;color:#3a4651}
 .row-control,.group-row .row-control{flex-shrink:0;min-width:20px;width:20px;padding:2px 0;border:0;background:none;font-size:18px;line-height:24px;color:var(--kleur-primair)}
 .row-control:hover{background:#ffffffaa}.row-delete{color:#9d3631}
 .row-spacer{display:block;flex-shrink:0;width:20px}
@@ -140,7 +142,11 @@ progress::-webkit-progress-bar{background:#e1e8ee}progress::-webkit-progress-val
 .meetings-list>button>div{flex:1}
 .meetings-list small{display:block;font-size:13px;color:#5e6b77;margin-top:4px}
 .recurrence-fields{padding:13px 12px 0;background:#f3f7fb;border:1px solid #d8e3ec;border-radius:4px;margin-bottom:14px}
-.occurrence-select{padding:0 20px 18px}.occurrence-select small{font-size:13px;color:#666}
+.occurrence-select{padding:0 20px 12px;border-top:1px solid #d8e1e9;padding-top:16px}
+.occurrence-edit{margin:0 20px 16px!important;padding:12px 14px 2px!important;border:1px solid #d8e3ec!important;border-radius:4px;background:#f8fbfd}
+.occurrence-edit legend{font-weight:600;color:var(--kleur-primair);padding:0 5px}
+.occurrence-edit .modal-actions{margin:4px 0 12px}
+div.occurrence-edit{padding-bottom:12px!important}.occurrence-select small{font-size:13px;color:#666}
 .meeting-save-hint{padding:0 20px 18px;margin:0}
 .dependency-editor .edit-only{margin-top:12px}
 .symbol-choice-list{padding:14px 20px 20px}
