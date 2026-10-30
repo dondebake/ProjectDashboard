@@ -17,7 +17,7 @@ Een projectplanner die volledig offline werkt: Gantt-planning, bijeenkomsten en 
 
 ## Werken met projectbestanden
 
-- **Bestand > Nieuw** begint een leeg project. Via **Project & kalender** geef je het een naam, kies je werkdagen en voer je vrije dagen in.
+- **Bestand > Nieuw** begint een leeg project. Via **Project & kalender** geef je het een naam, kies je werkdagen, vink je de feestdagen aan die vrij zijn (Nieuwjaarsdag, 2e paasdag, Koningsdag, Hemelvaartsdag, 2e pinksterdag, 1e en 2e kerstdag; de datums worden per jaar berekend) en voer je extra vrije dagen in.
 - **Openen** leest een JSON-projectbestand. **Opslaan** (Ctrl+S) schrijft naar het geopende bestand als de browser dat ondersteunt. **Opslaan als** (Ctrl+Shift+S) kiest een ander bestand. Zonder bestandstoegang downloadt de browser een nieuw JSON-bestand.
 - De browser bewaart daarnaast een herstelkopie (IndexedDB). De laatste sessie wordt bij opstarten hersteld. Dit vervangt opslaan niet.
 - Ctrl+Z en Ctrl+Shift+Z maken de laatste 50 wijzigingen ongedaan of opnieuw.
@@ -72,7 +72,7 @@ Wijzigingen in deze tab pas je toe met **Wijzigingen toepassen**; sla daarna het
 
 ## Projectbestand
 
-Een projectbestand is JSON met `schemaVersion: 1`, `name`, `calendar`, `groups`, `tasks` en `dependencies`, aangevuld met:
+Een projectbestand is JSON met `schemaVersion: 1`, `name`, `calendar` (`workweek`, `holidays`, `publicHolidays`), `groups`, `tasks` en `dependencies`, aangevuld met:
 
 - `tasks[].finances`: `{budget, remaining}`. `tasks[].teamAssignments`: `[{memberId, budgetHours, spentHours}]`, waarbij `spentHours` het startsaldo is.
 - `teamMembers`: `[{id, name, role, rates: [{id, start, end, hourlyRate}]}]`.

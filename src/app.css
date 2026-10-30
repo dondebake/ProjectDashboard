@@ -247,6 +247,12 @@ label small{display:block;font-size:13px;margin-top:5px;color:#666}
 .workweek{display:flex;gap:13px}
 .workweek label{display:flex;gap:5px;align-items:center}
 .workweek input{accent-color:var(--kleur-accent)}
+.holiday-options{border:1px solid #d8e1e9;border-radius:4px;padding:10px 12px 4px;margin:0 0 16px;display:grid;grid-template-columns:1fr 1fr;gap:2px 16px}
+.holiday-options legend{font-size:14px;font-weight:600;padding:0 5px}
+.holiday-options label{display:flex;align-items:baseline;gap:7px;margin-bottom:8px;font-weight:400}
+.holiday-options label input{accent-color:var(--kleur-accent)}
+.holiday-options label small{margin:0 0 0 auto;color:#666}
+.holiday-options>small{grid-column:1/-1;color:#666;margin-bottom:8px}
 .group-edit{display:flex;gap:7px;margin:9px 0}
 .group-edit input{flex:1;min-width:0;padding:8px;border:1px solid var(--kleur-border);border-radius:4px}
 .group-edit select{max-width:190px;font-size:14px}

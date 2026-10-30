@@ -3,13 +3,14 @@ import {validateHierarchy} from './hierarchy.js';
 import {validateTimeline,planningNodes,dependencyRequirement} from './events.js';
 import {validateTeam} from './team.js';
 import {validateFixedCosts} from './costs.js';
+import {PUBLIC_HOLIDAYS,publicHoliday} from './holidays.js';
 export const TYPES = { FS: 'Einde → start', SS: 'Start → start', FF: 'Einde → einde', SF: 'Start → einde' };
 const legacyTypes = { finish_to_start: 'FS', start_to_start: 'SS', finish_to_finish: 'FF', start_to_finish: 'SF' };
 export const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 export function validDate(s) { return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s)) && new Date(`${s}T12:00:00Z`).toISOString().slice(0,10) === s; }
 export function day(s, n = 0) { const d = new Date(`${s}T12:00:00Z`); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
 export const daysBetween = (a,b) => Math.round((Date.parse(b)-Date.parse(a))/86400000);
-export function working(s, calendar) { return calendar.workweek.includes(new Date(`${s}T12:00:00Z`).getUTCDay()) && !calendar.holidays.includes(s); }
+export function working(s, calendar) { return calendar.workweek.includes(new Date(`${s}T12:00:00Z`).getUTCDay()) && !calendar.holidays.includes(s) && !publicHoliday(s,calendar.publicHolidays); }
 export function snap(s, calendar, direction = 1) { let count=0; while (!working(s,calendar)) { if (++count>36600) throw Error('Geen werkdag gevonden in de kalender.'); s=day(s,direction); } return s; }
 export function addWork(s,n,calendar) { let result=s; for(let i=0;i<Math.abs(n);i++) result=snap(day(result,Math.sign(n)),calendar,Math.sign(n)); return result; }
 export function finish(task, calendar) { return task.duration === 0 ? task.start : addWork(task.start,task.duration-1,calendar); }
@@ -23,7 +24,7 @@ export function validate(project) {
   if(project.schemaVersion!==1) throw Error('Deze bestandsversie wordt niet ondersteund.');
   if(typeof project.name!=='string'||!project.name.trim()) throw Error('Vul een projectnaam in.');
   const c=project.calendar;
-  if(!c||!Array.isArray(c.workweek)||!c.workweek.length||c.workweek.some(x=>!Number.isInteger(x)||x<0||x>6)||!Array.isArray(c.holidays)||c.holidays.some(x=>!validDate(x))) throw Error('De werkkalender is ongeldig.');
+  if(!c||!Array.isArray(c.workweek)||!c.workweek.length||c.workweek.some(x=>!Number.isInteger(x)||x<0||x>6)||!Array.isArray(c.holidays)||c.holidays.some(x=>!validDate(x))||c.publicHolidays!==undefined&&(!Array.isArray(c.publicHolidays)||c.publicHolidays.some(x=>!PUBLIC_HOLIDAYS[x]))) throw Error('De werkkalender is ongeldig.');
   if(!Array.isArray(project.tasks)||!Array.isArray(project.groups)||!Array.isArray(project.dependencies)) throw Error('Taken, groepen of dependencies ontbreken.');
   const groupIds=new Set(project.groups.map(g=>g.id));
   if(groupIds.size!==project.groups.length) throw Error('Dubbele groeps-ID.');
