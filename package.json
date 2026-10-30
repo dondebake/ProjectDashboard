@@ -1,0 +1,22 @@
+{
+  "name": "project-planner",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Offline projectplanner met Gantt, projectteam, uren en kosten; één zelfstandig HTML-bestand.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build && node build-offline.mjs",
+    "test": "node --test tests/*.test.js",
+    "check": "node check-offline.mjs"
+  },
+  "dependencies": {
+    "@fontsource/cabin": "^5.3.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "vite": "^7.1.0"
+  }
+}

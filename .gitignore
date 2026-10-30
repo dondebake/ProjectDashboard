@@ -1,29 +1,21 @@
-# Python runtime & virtualenv
-python/
-venv/
-env/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
+# Afhankelijkheden en build-uitvoer (maak opnieuw met npm install / npm run build)
+node_modules/
+dist/
 
-# Database (contains project data — not tracked in source control)
+# Projectbestanden bevatten klant- en projectgegevens: nooit in deze openbare repo.
+*.json
+!package.json
+!package-lock.json
 *.db
 *.sqlite
 *.sqlite3
 
-# Backup folder
-Backup/
-
-# Flask instance / secrets
-instance/
+# Lokale instellingen
+.claude/
+.vscode/
+.idea/
 .env
-.flaskenv
 
 # OS
 .DS_Store
 Thumbs.db
-
-# IDE
-.vscode/
-.idea/

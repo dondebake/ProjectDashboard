@@ -1,0 +1,13 @@
+import React,{useState} from 'react';
+import {TYPES} from './engine.js';
+import {planningNodes} from './events.js';
+export default function DependencyEditor({project,nodeId,onChange,onConnect,readOnly=false}) {
+  const [from,setFrom]=useState(''),[type,setType]=useState('FS'),[lag,setLag]=useState(0);
+  const nodes=planningNodes(project),label=id=>{const n=nodes.find(x=>x.id===id);return n?(n.nodeType==='meeting'?`${n.title} (${n.date}${n.time?' '+n.time:''})`:n.title):'Onbekend';};
+  const dependencies=project.dependencies.filter(d=>d.to===nodeId||d.from===nodeId);
+  return <fieldset disabled={readOnly} className="dependency-editor"><h3>Afhankelijkheden</h3><p>Verbind taken en afzonderlijke bijeenkomsten. Wijzigingen worden direct toegepast.</p>
+    {dependencies.map(d=><div className="dependency-row" key={JSON.stringify([d.from,d.to])}><span>{label(d.from)} → {label(d.to)}</span><select aria-label="Dependencytype" value={d.type} onChange={e=>onChange(project.dependencies.map(x=>x===d?{...x,type:e.target.value}:x))}>{Object.entries(TYPES).map(([key,title])=><option key={key} value={key}>{key} · {title}</option>)}</select><input aria-label="Vertraging in werkdagen" type="number" value={d.lag} onChange={e=>onChange(project.dependencies.map(x=>x===d?{...x,lag:Number(e.target.value)}:x))}/><button onClick={()=>onChange(project.dependencies.filter(x=>x!==d))} aria-label="Dependency verwijderen">×</button></div>)}
+    <div className="dependency-add"><select aria-label="Voorganger kiezen" value={from} onChange={e=>setFrom(e.target.value)}><option value="">Kies voorganger…</option><optgroup label="Taken en mijlpalen">{nodes.filter(n=>n.id!==nodeId&&n.nodeType!=='meeting').map(n=><option key={n.id} value={n.id}>{label(n.id)}</option>)}</optgroup><optgroup label="Bijeenkomsten">{nodes.filter(n=>n.id!==nodeId&&n.nodeType==='meeting').map(n=><option key={n.id} value={n.id}>{label(n.id)}</option>)}</optgroup></select><select aria-label="Nieuw dependencytype" value={type} onChange={e=>setType(e.target.value)}>{Object.entries(TYPES).map(([key,title])=><option key={key} value={key}>{key} · {title}</option>)}</select><input aria-label="Nieuwe vertraging in werkdagen" type="number" value={lag} onChange={e=>setLag(e.target.value)}/><button disabled={!from} onClick={()=>{if(onChange([...project.dependencies,{from,to:nodeId,type,lag:Number(lag)}]))setFrom('');}}>+</button></div>
+    <small>Negatieve vertraging staat overlap toe. Bijeenkomsten blijven op hun agendadatum; te late voorbereiding wordt als conflict gemeld.</small>{onConnect&&<div className="edit-only"><button type="button" onClick={()=>onConnect(nodeId)}>Verbind als voorganger…</button></div>}
+  </fieldset>;
+}
