@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {emptyProject,parseProject,schedule} from '../src/engine.js';
-import {buildRows,upsertTask,deleteTaskTree,deleteGroup,reorderGroup,itemColor,textColor} from '../src/hierarchy.js';
+import {buildRows,upsertTask,deleteTaskTree,deleteGroup,reorderGroup,moveTaskTo,stepTask,itemColor,textColor} from '../src/hierarchy.js';
+const order=p=>buildRows(p).map(r=>r.kind==='group'?r.group.id:r.task.id);
 const task=(id,groupId='g',parentTaskId=null)=>({id,title:id,groupId,parentTaskId,start:'2026-10-26',duration:2,progress:0});
 function fixture(){return {...emptyProject(),groups:[{id:'g',name:'Groep',parentId:null,color:'#154273'},{id:'h',name:'Tweede',parentId:null,color:'#ff9900'}],tasks:[task('a'),task('b'),task('s','g','a'),task('c','h')]};}
 test('three-level rows place subtasks directly under their task and keep IDs distinct',()=>{
@@ -45,3 +46,41 @@ test('color inheritance is group to task to subtask, with independent overrides'
   const reopened=parseProject(JSON.stringify(p));assert.equal(reopened.tasks[2].color,'#00ff00');assert.equal(textColor('#000000'),'#ffffff');assert.equal(textColor('#ffffff'),'#111111');
 });
 test('invalid custom colors are rejected on import',()=>{const p=fixture();p.tasks[0].color='url(evil)';assert.throws(()=>parseProject(p),/kleur/);});
+test('dragging a task above or below a sibling reorders it, subtasks travel along',()=>{
+  const p=fixture();
+  assert.deepEqual(order(moveTaskTo(p,'b',{kind:'task',id:'a',position:'before'})),['g','b','a','s','h','c']);
+  assert.deepEqual(order(moveTaskTo(p,'a',{kind:'task',id:'b',position:'after'})),['g','b','a','s','h','c']);
+  assert.deepEqual(order(p),['g','a','s','b','h','c']);
+});
+test('dragging a task to another group keeps dates, costs, team and dependencies and moves its subtasks',()=>{
+  const p=fixture();p.tasks[0].finances={budget:500};p.tasks[0].teamAssignments=[];p.dependencies=[{from:'a',to:'c',type:'FS',lag:0}];
+  const next=moveTaskTo(p,'a',{kind:'task',id:'c',position:'after'});
+  assert.deepEqual(order(next),['g','b','h','c','a','s']);
+  assert.equal(next.tasks.find(t=>t.id==='s').groupId,'h');assert.deepEqual(next.tasks.find(t=>t.id==='a').finances,{budget:500});
+  assert.equal(next.tasks.find(t=>t.id==='a').start,'2026-10-26');assert.deepEqual(next.dependencies,p.dependencies);
+  assert.deepEqual(order(moveTaskTo(p,'b',{kind:'group',id:'h'})),['g','a','s','h','b','c']);
+  assert.doesNotThrow(()=>parseProject(JSON.stringify(next)));
+});
+test('a task can become a subtask and a subtask can become a task or move to another task',()=>{
+  const p=fixture();
+  const nested=moveTaskTo(p,'c',{kind:'task',id:'a',position:'inside'});
+  assert.deepEqual(order(nested),['g','a','s','c','b','h']);assert.equal(nested.tasks.find(t=>t.id==='c').groupId,'g');
+  const promoted=moveTaskTo(p,'s',{kind:'task',id:'b',position:'after'});
+  assert.deepEqual(order(promoted),['g','a','b','s','h','c']);assert.equal(promoted.tasks.find(t=>t.id==='s').parentTaskId,null);
+  const between=moveTaskTo(p,'s',{kind:'task',id:'c',position:'inside'});
+  assert.deepEqual(order(between),['g','a','b','h','c','s']);assert.equal(between.tasks.find(t=>t.id==='s').groupId,'h');
+  const sibling=moveTaskTo(nested,'s',{kind:'task',id:'c',position:'after'});
+  assert.deepEqual(order(sibling),['g','a','c','s','b','h']);
+});
+test('a fourth level is refused: no task with subtasks under another task, no subtask under a subtask',()=>{
+  const p=fixture();
+  assert.throws(()=>moveTaskTo(p,'a',{kind:'task',id:'b',position:'inside'}),/subtaken/);
+  assert.throws(()=>moveTaskTo(p,'a',{kind:'task',id:'s',position:'after'}),/subtaken/);
+  assert.throws(()=>moveTaskTo(p,'b',{kind:'task',id:'s',position:'inside'}),/drie niveaus/);
+  assert.deepEqual(order(moveTaskTo(p,'a',{kind:'task',id:'a',position:'inside'})),order(p));
+});
+test('arrow-key steps only swap with siblings at the same level',()=>{
+  const p=fixture();
+  assert.deepEqual(order(stepTask(p,'b',-1)),['g','b','a','s','h','c']);
+  assert.deepEqual(order(stepTask(p,'a',-1)),order(p));assert.deepEqual(order(stepTask(p,'s',1)),order(p));
+});

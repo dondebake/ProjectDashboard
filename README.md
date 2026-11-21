@@ -28,7 +28,12 @@ Zet beide HTML-bestanden en het JSON-projectbestand op de netwerkschijf. Collega
 
 ## Planning
 
-- **Structuur:** groep > taak > subtaak, met oplopende inspringing en lettergrootte 12/11/10 pt. Gebruik **+** in een groepsrij voor een taak en **+** in een taakrij voor een subtaak. Groepen en taken met subtaken zijn in te klappen. Sleep de **⠿**-greep (of gebruik pijltjestoetsen) om groepen te herordenen.
+- **Structuur:** groep > taak > subtaak, met oplopende inspringing en lettergrootte 12/11/10 pt. Gebruik **+** in een groepsrij voor een taak en **+** in een taakrij voor een subtaak. Groepen en taken met subtaken zijn in te klappen. Iedere groep, taak en subtaak heeft een **⠿**-greep om te slepen:
+  - **Boven of onder een rij** loslaten (blauwe lijn): de taak komt op dat niveau ervoor of erna, ook in een andere groep of onder een andere taak. Zo maak je van een subtaak ook weer een gewone taak.
+  - **Op een groepsrij** loslaten (gestippeld kader): de taak komt bovenaan in die groep.
+  - **Midden op een taakrij** loslaten (gestippeld kader): de taak wordt de laatste subtaak daarvan.
+  - Subtaken gaan mee met hun taak. Een taak met subtaken kan geen subtaak worden: er zijn maximaal drie niveaus. Groepen sleep je tussen andere groepen.
+  - Datums, uren, kosten en dependencies veranderen niet. Met de greep geselecteerd verschuiven de **pijltjestoetsen** een item één plek binnen zijn eigen niveau.
 - **Taken:** sleep een balk om hem te verplaatsen en de rechterrand om de duur te wijzigen. Dubbelklik of klik op de naam om te bewerken. In de taakmodal vul je een **startdatum** in en daarna óf een **duur in werkdagen** óf een **einddatum**; de andere waarde rekent mee. Duur 0 maakt een mijlpaal.
 - **Dependencies:** klik **⌁** bij de voorganger en daarna bij de opvolger voor een FS-dependency. De taakeditor beheert alle typen (FS/SS/FF/SF) en vertraging in werkdagen. Pijlen lopen om taakbalken heen; als er geen vrije route is, wordt de lijn gestippeld.
 - **Kleuren:** een taak zonder eigen kleur neemt de groepskleur over, een subtaak die van zijn taak.
