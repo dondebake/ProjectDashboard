@@ -1,6 +1,9 @@
 # Afhankelijkheden en build-uitvoer (maak opnieuw met npm install / npm run build)
 node_modules/
-dist/
+# Alleen de twee kant-en-klare HTML-bestanden staan in de repo; tussenbestanden niet.
+dist/*
+!dist/Project Planner.html
+!dist/Project Planner - Alleen lezen.html
 
 # Projectbestanden bevatten klant- en projectgegevens: nooit in deze openbare repo.
 *.json
